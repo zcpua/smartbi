@@ -1,0 +1,11 @@
+node_modules
+dist
+.wrangler
+.vercel
+.git
+.DS_Store
+*.local
+test.svg
+test.png
+Dockerfile*
+.dockerignore

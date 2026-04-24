@@ -10,6 +10,12 @@ npm run dev          # Start dev server (localhost:3000) with hot reload
 npm test             # Run tests
 npx wrangler deploy  # Deploy to Cloudflare Workers
 vercel deploy        # Deploy to Vercel Edge
+bun run bun/serve.ts # Start dev server with Bun
+deno task start      # Start dev server with Deno
+deno task deploy     # Deploy to Deno Deploy
+docker build -t smartbi .              # Build Docker image (Node.js)
+docker build -f Dockerfile.bun -t smartbi-bun .   # Build Docker image (Bun)
+docker build -f Dockerfile.deno -t smartbi-deno .  # Build Docker image (Deno)
 ```
 
 ## Architecture
@@ -22,16 +28,25 @@ Hono HTTP framework, dual chart renderer:
 
 Request flow: `routes/chart.ts` validates params -> fetches/parses data -> selects renderer -> returns SVG/PNG/HTML.
 
-### HTML mode (`/chart.html`)
+### Smart route (`/chart`)
 
-Returns self-contained HTML with ECharts loaded from CDN (client-side rendering). Uses `buildOption()` exported from `echarts.ts` to generate the ECharts option JSON, then injects it into an HTML template with tooltip config. Supports all 11 chart types, auto-resize, iframe embedding.
+Single URL that auto-detects context via `Sec-Fetch-Dest` header: `image` → SVG, `iframe` → interactive HTML, `document` → share page. Falls back to `Accept` header, then defaults to SVG.
+
+### Share page (`/share.html`)
+
+Chart fills the viewport, compact 44px bottom bar with Link/Markdown/HTML/iframe tabs, code display box, Copy button, and Edit button linking to `/editor.html`. Template in `src/templates/share.ts`.
+
+### Editor mode (`/editor.html`)
+
+Full visual chart editor. Server injects parsed data + initial ECharts option into `src/templates/editor.ts` template. Client-side JS handles: chart type switching, 6 color scheme presets + custom colors, light/dark theme toggle, parameter editing (title, labels, dimensions, smooth), and export panel (SVG URL, PNG URL, Markdown, HTML img, iframe, CSV) with copy/download. All state managed in a global `S` object, `buildOpt()` rebuilds ECharts option on every change.
 
 ## Key Files
 
 ```
 src/
-├── index.ts                  App entry, serves on @hono/node-server locally
-├── routes/chart.ts           Main route: GET /chart.svg, GET /chart.png, GET /chart.html
+├── app.ts                    Pure Hono app (platform-agnostic, shared by all deploy targets)
+├── index.ts                  Node.js dev server, serves on @hono/node-server locally
+├── routes/chart.ts           Routes: GET /chart (smart), /chart.svg, /chart.png, /chart.html, /share.html, /editor.html
 ├── parsers/
 │   ├── csv.ts                PapaParse wrapper, outputs ParsedData
 │   ├── markdown.ts           GFM table parser, outputs ParsedData
@@ -41,6 +56,9 @@ src/
 │   ├── d3.ts                 D3 renderer (5 chart types)
 │   ├── echarts.ts            ECharts SSR renderer (11 chart types), exports buildOption() for HTML mode
 │   └── index.ts              getRenderer() factory
+├── templates/
+│   ├── editor.ts             Self-contained HTML editor template (chart type/color/theme/param editing + export)
+│   └── share.ts              Share page template (full-screen chart + bottom embed bar)
 ├── converter/png.ts          SVG -> PNG via @resvg/resvg-wasm
 ├── fetcher/index.ts          Remote URL fetcher (SSRF protection in prod, relaxed in dev)
 ├── cache/index.ts            Cache-Control header helper
@@ -50,6 +68,8 @@ src/
 ├── utils/validate.ts         Query parameter validation -> ValidatedQuery
 └── errors/index.ts           SmartBIError, ValidationError, ParseError, DataFetchError, RenderError
 api/index.ts                  Vercel Edge entry point (re-exports Hono app via hono/vercel)
+bun/serve.ts                  Bun entry point (Bun.serve + Hono app)
+deno/serve.ts                 Deno Deploy entry point (Deno.serve + Hono app)
 test/fixtures/                Sample CSV and Markdown data files for local testing
 ```
 

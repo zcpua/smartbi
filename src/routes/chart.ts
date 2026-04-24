@@ -7,11 +7,13 @@ import { svgToPng } from "../converter/png.js";
 import { cacheHeaders } from "../cache/index.js";
 import { validateQuery } from "../utils/validate.js";
 import { THEMES } from "../config/themes.js";
+import { renderEditor } from "../templates/editor.js";
+import { renderShare } from "../templates/share.js";
 import type { ChartConfig } from "../renderers/types.js";
 
 const chart = new Hono();
 
-async function resolveConfig(c: any): Promise<ChartConfig> {
+async function resolveData(c: any): Promise<{ config: ChartConfig; rawCsv: string }> {
   const query = c.req.query();
   const validated = validateQuery(query);
 
@@ -26,21 +28,29 @@ async function resolveConfig(c: any): Promise<ChartConfig> {
   const theme = THEMES[validated.theme];
   const colors = validated.colors.length > 0 ? validated.colors : theme.colors;
 
+  const csvLines = [parsedData.headers.join(",")];
+  for (const row of parsedData.rows) {
+    csvLines.push(row.map((v) => String(v)).join(","));
+  }
+
   return {
-    type: validated.type,
-    data: parsedData,
-    width: validated.width,
-    height: validated.height,
-    title: validated.title,
-    xlabel: validated.xlabel,
-    ylabel: validated.ylabel,
-    colors,
-    theme: validated.theme,
+    config: {
+      type: validated.type,
+      data: parsedData,
+      width: validated.width,
+      height: validated.height,
+      title: validated.title,
+      xlabel: validated.xlabel,
+      ylabel: validated.ylabel,
+      colors,
+      theme: validated.theme,
+    },
+    rawCsv: csvLines.join("\n"),
   };
 }
 
 async function handleChart(c: any, format: "svg" | "png") {
-  const chartConfig = await resolveConfig(c);
+  const { config: chartConfig } = await resolveData(c);
   const validated = validateQuery(c.req.query());
   const renderer = getRenderer(chartConfig.type, validated.renderer);
   const svg = await renderer.render(chartConfig);
@@ -60,7 +70,7 @@ async function handleChart(c: any, format: "svg" | "png") {
 }
 
 async function handleHtml(c: any) {
-  const chartConfig = await resolveConfig(c);
+  const { config: chartConfig } = await resolveData(c);
 
   const option = buildOption(chartConfig);
   option.tooltip = buildTooltip(chartConfig.type);
@@ -98,6 +108,43 @@ html,body{width:100%;height:100%;overflow:hidden;background:${theme.background}}
   return c.html(html, 200, cacheHeaders());
 }
 
+async function handleEditor(c: any) {
+  if (process.env.ENABLE_EDITOR !== "true") {
+    return c.json({ error: "Editor mode is not enabled" }, 403);
+  }
+  const { config, rawCsv } = await resolveData(c);
+  const initialOption = buildOption(config);
+  initialOption.tooltip = buildTooltip(config.type);
+
+  const html = renderEditor({
+    config,
+    rawCsv,
+    parsedData: { headers: config.data.headers, rows: config.data.rows, types: config.data.types },
+    initialOption,
+  });
+
+  return c.html(html);
+}
+
+async function handleShare(c: any) {
+  if (process.env.ENABLE_SHARE !== "true") {
+    return c.json({ error: "Share mode is not enabled" }, 403);
+  }
+  const { config, rawCsv } = await resolveData(c);
+  const option = buildOption(config);
+  option.tooltip = buildTooltip(config.type);
+
+  const html = renderShare({
+    config,
+    rawCsv,
+    parsedData: { headers: config.data.headers, rows: config.data.rows, types: config.data.types },
+    optionJson: JSON.stringify(option),
+    enableEditor: process.env.ENABLE_EDITOR === "true",
+  });
+
+  return c.html(html);
+}
+
 function buildTooltip(type: string): Record<string, any> {
   switch (type) {
     case "pie":
@@ -106,9 +153,7 @@ function buildTooltip(type: string): Record<string, any> {
     case "gauge":
       return { trigger: "item", formatter: "{b}: {c} ({d}%)" };
     case "scatter":
-      return { trigger: "item" };
     case "radar":
-      return { trigger: "item" };
     case "heatmap":
       return { trigger: "item" };
     default:
@@ -123,5 +168,26 @@ function escapeHtml(s: string): string {
 chart.get("/chart.svg", (c: any) => handleChart(c, "svg"));
 chart.get("/chart.png", (c: any) => handleChart(c, "png"));
 chart.get("/chart.html", (c: any) => handleHtml(c));
+chart.get("/editor.html", (c: any) => handleEditor(c));
+chart.get("/share.html", (c: any) => handleShare(c));
+
+chart.get("/chart", (c: any) => {
+  const dest = (c.req.header("sec-fetch-dest") || "").toLowerCase();
+  if (dest === "image") return handleChart(c, "svg");
+  if (dest === "iframe") return handleHtml(c);
+  if (dest === "document") {
+    if (process.env.ENABLE_SHARE === "true") return handleShare(c);
+    return handleHtml(c);
+  }
+
+  const accept = c.req.header("accept") || "";
+  if (accept.includes("image/")) return handleChart(c, "svg");
+  if (accept.includes("text/html")) {
+    if (process.env.ENABLE_SHARE === "true") return handleShare(c);
+    return handleHtml(c);
+  }
+
+  return handleChart(c, "svg");
+});
 
 export default chart;

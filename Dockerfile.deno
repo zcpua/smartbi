@@ -1,0 +1,14 @@
+FROM denoland/deno:alpine
+
+WORKDIR /app
+
+COPY deno.json ./
+COPY package.json ./
+COPY src/ src/
+COPY deno/ deno/
+
+RUN deno install
+
+ENV NODE_ENV=production
+EXPOSE 8000
+CMD ["deno", "task", "start"]

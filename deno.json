@@ -1,0 +1,11 @@
+{
+  "tasks": {
+    "start": "deno run --allow-net --allow-read --allow-env deno/serve.ts",
+    "deploy": "deployctl deploy --project=smartbi --entrypoint=deno/serve.ts"
+  },
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "npm:hono/jsx"
+  }
+}

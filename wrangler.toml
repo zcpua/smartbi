@@ -1,5 +1,5 @@
 name = "smartbi"
-main = "src/index.ts"
+main = "src/app.ts"
 compatibility_date = "2024-09-01"
 compatibility_flags = ["nodejs_compat"]
 
