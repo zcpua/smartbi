@@ -36,11 +36,11 @@ export class EChartsRenderer implements ChartRenderer {
   }
 }
 
-export function buildOption(config: ChartConfig): echarts.EChartsOption {
+export function buildOption(config: ChartConfig): echarts.EChartsCoreOption {
   const theme = THEMES[config.theme];
   const colors = config.colors.length > 0 ? config.colors : theme.colors;
 
-  const base: echarts.EChartsOption = {
+  const base: echarts.EChartsCoreOption = {
     backgroundColor: theme.background,
     color: colors,
     title: config.title ? { text: config.title, left: "center", textStyle: { color: theme.text, fontSize: 16 } } : undefined,
@@ -81,7 +81,7 @@ function getSeriesInfo(data: ParsedData) {
   return { labelIdx, numericIndices, labels };
 }
 
-function buildCartesian(config: ChartConfig, seriesType: string, isArea: boolean): echarts.EChartsOption {
+function buildCartesian(config: ChartConfig, seriesType: string, isArea: boolean): echarts.EChartsCoreOption {
   const { labelIdx, numericIndices, labels } = getSeriesInfo(config.data);
   const theme = THEMES[config.theme];
 
@@ -112,7 +112,7 @@ function buildCartesian(config: ChartConfig, seriesType: string, isArea: boolean
   };
 }
 
-function buildScatter(config: ChartConfig): echarts.EChartsOption {
+function buildScatter(config: ChartConfig): echarts.EChartsCoreOption {
   const numericCols = config.data.types.map((t, i) => (t === "number" ? i : -1)).filter((i) => i >= 0);
   const xIdx = numericCols[0] ?? 0;
   const yIdx = numericCols[1] ?? numericCols[0] ?? 0;
@@ -126,7 +126,7 @@ function buildScatter(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildPie(config: ChartConfig): echarts.EChartsOption {
+function buildPie(config: ChartConfig): echarts.EChartsCoreOption {
   const labelIdx = config.data.types.findIndex((t) => t === "string");
   const valueIdx = config.data.types.findIndex((t) => t === "number");
   const theme = THEMES[config.theme];
@@ -146,7 +146,7 @@ function buildPie(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildRadar(config: ChartConfig): echarts.EChartsOption {
+function buildRadar(config: ChartConfig): echarts.EChartsCoreOption {
   const { numericIndices, labels } = getSeriesInfo(config.data);
   const theme = THEMES[config.theme];
 
@@ -168,7 +168,7 @@ function buildRadar(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildHeatmap(config: ChartConfig): echarts.EChartsOption {
+function buildHeatmap(config: ChartConfig): echarts.EChartsCoreOption {
   const { numericIndices, labels } = getSeriesInfo(config.data);
   const theme = THEMES[config.theme];
   const colors = config.colors.length > 0 ? config.colors : theme.colors;
@@ -194,7 +194,7 @@ function buildHeatmap(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildCandlestick(config: ChartConfig): echarts.EChartsOption {
+function buildCandlestick(config: ChartConfig): echarts.EChartsCoreOption {
   const { labels } = getSeriesInfo(config.data);
   const numericCols = config.data.types.map((t, i) => (t === "number" ? i : -1)).filter((i) => i >= 0);
   const theme = THEMES[config.theme];
@@ -210,7 +210,7 @@ function buildCandlestick(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildFunnel(config: ChartConfig): echarts.EChartsOption {
+function buildFunnel(config: ChartConfig): echarts.EChartsCoreOption {
   const labelIdx = config.data.types.findIndex((t) => t === "string");
   const valueIdx = config.data.types.findIndex((t) => t === "number");
   const theme = THEMES[config.theme];
@@ -229,7 +229,7 @@ function buildFunnel(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildTreemap(config: ChartConfig): echarts.EChartsOption {
+function buildTreemap(config: ChartConfig): echarts.EChartsCoreOption {
   const labelIdx = config.data.types.findIndex((t) => t === "string");
   const valueIdx = config.data.types.findIndex((t) => t === "number");
 
@@ -244,7 +244,7 @@ function buildTreemap(config: ChartConfig): echarts.EChartsOption {
   };
 }
 
-function buildGauge(config: ChartConfig): echarts.EChartsOption {
+function buildGauge(config: ChartConfig): echarts.EChartsCoreOption {
   const labelIdx = config.data.types.findIndex((t) => t === "string");
   const valueIdx = config.data.types.findIndex((t) => t === "number");
   const theme = THEMES[config.theme];

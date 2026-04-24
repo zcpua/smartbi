@@ -10,7 +10,7 @@ async function ensureWasm() {
     const wasmBytes = await wasmResponse.arrayBuffer();
     await initWasm(wasmBytes);
   } catch {
-    await initWasm();
+    await initWasm(undefined as any);
   }
   wasmInitialized = true;
 }
