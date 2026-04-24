@@ -1,7 +1,8 @@
 {
+  "unstable": ["sloppy-imports"],
   "tasks": {
-    "start": "deno run --allow-net --allow-read --allow-env deno/serve.ts",
-    "deploy": "deployctl deploy --project=smartbi --entrypoint=deno/serve.ts"
+    "start": "deno run --allow-net --allow-read --allow-env --unstable-sloppy-imports deno/serve.ts",
+    "deploy": "deployctl deploy --project=smartbi --entrypoint=deno/serve.ts --sloppy-imports"
   },
   "nodeModulesDir": "auto",
   "compilerOptions": {
